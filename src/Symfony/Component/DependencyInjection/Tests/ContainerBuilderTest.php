@@ -31,9 +31,11 @@ use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Exception\BadMethodCallException;
 use Symfony\Component\DependencyInjection\Exception\EnvNotFoundException;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Exception\ParameterCircularReferenceException;
+use Symfony\Component\DependencyInjection\Exception\ParameterNotFoundException;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceException;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
@@ -42,9 +44,11 @@ use Symfony\Component\DependencyInjection\LazyProxy\Instantiator\RealServiceInst
 use Symfony\Component\DependencyInjection\Loader\ClosureLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\EnvPlaceholderParameterBag;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\DependencyInjection\Tests\Compiler\Foo;
+use Symfony\Component\DependencyInjection\Tests\Compiler\FooAnnotation;
 use Symfony\Component\DependencyInjection\Tests\Compiler\Wither;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\CaseSensitiveClass;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\CustomDefinition;
@@ -52,6 +56,7 @@ use Symfony\Component\DependencyInjection\Tests\Fixtures\FooWithAbstractArgument
 use Symfony\Component\DependencyInjection\Tests\Fixtures\ScalarFactory;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\SimilarArgumentsDummy;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\StringBackedEnum;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\WitherAnnotationStaticReturnType;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\WitherStaticReturnType;
 use Symfony\Component\DependencyInjection\TypedReference;
 use Symfony\Component\ExpressionLanguage\Expression;
@@ -98,6 +103,110 @@ class ContainerBuilderTest extends TestCase
         } catch (ServiceNotFoundException $e) {
             $this->assertEquals('You have requested a non-existent service "baz".', $e->getMessage(), '->getDefinition() throws a ServiceNotFoundException if the service definition does not exist');
         }
+    }
+
+    /**
+     * The test should be kept in the group as it always expects a deprecation.
+     *
+     * @group legacy
+     */
+    public function testDeprecateParameter()
+    {
+        $builder = new ContainerBuilder();
+        $builder->setParameter('foo', 'bar');
+
+        $builder->deprecateParameter('foo', 'symfony/test', '6.3');
+
+        $this->expectDeprecation('Since symfony/test 6.3: The parameter "foo" is deprecated.');
+
+        $builder->getParameter('foo');
+    }
+
+    /**
+     * The test should be kept in the group as it always expects a deprecation.
+     *
+     * @group legacy
+     */
+    public function testParameterDeprecationIsTrgiggeredWhenCompiled()
+    {
+        $builder = new ContainerBuilder();
+        $builder->setParameter('foo', '%bar%');
+        $builder->setParameter('bar', 'baz');
+
+        $builder->deprecateParameter('bar', 'symfony/test', '6.3');
+
+        $this->expectDeprecation('Since symfony/test 6.3: The parameter "bar" is deprecated.');
+
+        $builder->compile();
+    }
+
+    public function testDeprecateParameterThrowsWhenParameterIsUndefined()
+    {
+        $builder = new ContainerBuilder();
+
+        $this->expectException(ParameterNotFoundException::class);
+        $this->expectExceptionMessage('You have requested a non-existent parameter "foo".');
+
+        $builder->deprecateParameter('foo', 'symfony/test', '6.3');
+    }
+
+    public function testDeprecateParameterThrowsWhenParameterBagIsNotInternal()
+    {
+        $builder = new ContainerBuilder(new class() implements ParameterBagInterface {
+            public function clear(): void
+            {
+            }
+
+            public function add(array $parameters): void
+            {
+            }
+
+            public function all(): array
+            {
+                return [];
+            }
+
+            public function get(string $name): array|bool|string|int|float|\UnitEnum|null
+            {
+                return null;
+            }
+
+            public function remove(string $name): void
+            {
+            }
+
+            public function set(string $name, \UnitEnum|float|int|bool|array|string|null $value): void
+            {
+            }
+
+            public function has(string $name): bool
+            {
+                return false;
+            }
+
+            public function resolve(): void
+            {
+            }
+
+            public function resolveValue(mixed $value): mixed
+            {
+                return null;
+            }
+
+            public function escapeValue(mixed $value): mixed
+            {
+                return null;
+            }
+
+            public function unescapeValue(mixed $value): mixed
+            {
+                return null;
+            }
+        });
+
+        $this->expectException(BadMethodCallException::class);
+
+        $builder->deprecateParameter('foo', 'symfony/test', '6.3');
     }
 
     public function testRegister()
@@ -211,7 +320,7 @@ class ContainerBuilderTest extends TestCase
         $builder->setDefinition($id, new Definition('Foo'));
     }
 
-    public function provideBadId()
+    public static function provideBadId()
     {
         return [
             [''],
@@ -1037,9 +1146,7 @@ class ContainerBuilderTest extends TestCase
 
         $matchingResources = array_filter(
             $container->getResources(),
-            function (ResourceInterface $resource) {
-                return 'reflection.BarClass' === (string) $resource;
-            }
+            fn (ResourceInterface $resource) => 'reflection.BarClass' === (string) $resource
         );
 
         $this->assertNotEmpty($matchingResources);
@@ -1511,7 +1618,7 @@ class ContainerBuilderTest extends TestCase
         $this->assertInstanceOf(\stdClass::class, $listener4);
     }
 
-    public function provideAlmostCircular()
+    public static function provideAlmostCircular()
     {
         yield ['public'];
         yield ['private'];
@@ -1727,6 +1834,28 @@ class ContainerBuilderTest extends TestCase
         $this->assertInstanceOf(Wither::class, $wither->withFoo1($wither->foo));
     }
 
+    /**
+     * @group legacy
+     */
+    public function testWitherAnnotationWithStaticReturnType()
+    {
+        $this->expectDeprecation('Since symfony/dependency-injection 6.3: Relying on the "@required" annotation on method "Symfony\Component\DependencyInjection\Tests\Fixtures\WitherAnnotationStaticReturnType::withFoo()" is deprecated, use the "Symfony\Contracts\Service\Attribute\Required" attribute instead.');
+        $this->expectDeprecation('Since symfony/dependency-injection 6.3: Relying on the "@required" annotation on method "Symfony\Component\DependencyInjection\Tests\Fixtures\WitherAnnotationStaticReturnType::setFoo()" is deprecated, use the "Symfony\Contracts\Service\Attribute\Required" attribute instead.');
+
+        $container = new ContainerBuilder();
+        $container->register(FooAnnotation::class);
+
+        $container
+            ->register('wither', WitherAnnotationStaticReturnType::class)
+            ->setPublic(true)
+            ->setAutowired(true);
+
+        $container->compile();
+
+        $wither = $container->get('wither');
+        $this->assertInstanceOf(FooAnnotation::class, $wither->foo);
+    }
+
     public function testWitherWithStaticReturnType()
     {
         $container = new ContainerBuilder();
@@ -1829,6 +1958,33 @@ class ContainerBuilderTest extends TestCase
 
         $this->assertSame(['tag1', 'tag2', 'tag3'], $container->findTags());
     }
+
+    public function testNamedArgumentAfterCompile()
+    {
+        $container = new ContainerBuilder();
+        $container->register(E::class)
+            ->setPublic(true)
+            ->setArguments(['$second' => 2]);
+
+        $container->compile();
+
+        $e = $container->get(E::class);
+
+        $this->assertSame('', $e->first);
+        $this->assertSame(2, $e->second);
+    }
+
+    public function testNamedArgumentBeforeCompile()
+    {
+        $container = new ContainerBuilder();
+        $container->register(E::class, E::class)
+            ->setPublic(true)
+            ->setArguments(['$first' => 1]);
+
+        $e = $container->get(E::class);
+
+        $this->assertSame(1, $e->first);
+    }
 }
 
 class FooClass
@@ -1856,4 +2012,16 @@ class C implements X
 
 class D implements X
 {
+}
+
+class E
+{
+    public $first;
+    public $second;
+
+    public function __construct($first = '', $second = '')
+    {
+        $this->first = $first;
+        $this->second = $second;
+    }
 }

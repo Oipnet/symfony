@@ -113,12 +113,12 @@ class AccessTokenTest extends AbstractWebTestCase
         $this->assertSame(401, $response->getStatusCode());
     }
 
-    public function defaultFormEncodedBodyFailureData(): iterable
+    public static function defaultFormEncodedBodyFailureData(): iterable
     {
         yield [['access_token' => 'INVALID_ACCESS_TOKEN'], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']];
     }
 
-    public function customFormEncodedBodyFailure(): iterable
+    public static function customFormEncodedBodyFailure(): iterable
     {
         yield [['secured_token' => 'INVALID_ACCESS_TOKEN'], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']];
     }
@@ -211,24 +211,24 @@ class AccessTokenTest extends AbstractWebTestCase
         $this->assertSame(401, $response->getStatusCode());
     }
 
-    public function defaultHeaderAccessTokenFailureData(): iterable
+    public static function defaultHeaderAccessTokenFailureData(): iterable
     {
         yield [['HTTP_AUTHORIZATION' => 'Bearer INVALID_ACCESS_TOKEN']];
     }
 
-    public function defaultMissingHeaderAccessTokenFailData(): iterable
+    public static function defaultMissingHeaderAccessTokenFailData(): iterable
     {
         yield [['HTTP_AUTHORIZATION' => 'JWT INVALID_TOKEN_TYPE']];
         yield [['HTTP_X_FOO' => 'Missing-Header']];
         yield [['HTTP_X_AUTH_TOKEN' => 'this is not a token']];
     }
 
-    public function customHeaderAccessTokenFailure(): iterable
+    public static function customHeaderAccessTokenFailure(): iterable
     {
         yield [['HTTP_X_AUTH_TOKEN' => 'INVALID_ACCESS_TOKEN'], 500];
     }
 
-    public function customMissingHeaderAccessTokenShouldFail(): iterable
+    public static function customMissingHeaderAccessTokenShouldFail(): iterable
     {
         yield [[]];
         yield [['HTTP_AUTHORIZATION' => 'Bearer this is not a token']];
@@ -306,13 +306,25 @@ class AccessTokenTest extends AbstractWebTestCase
         $this->assertSame(401, $response->getStatusCode());
     }
 
-    public function defaultQueryAccessTokenFailureData(): iterable
+    public static function defaultQueryAccessTokenFailureData(): iterable
     {
         yield ['/foo?access_token=INVALID_ACCESS_TOKEN'];
     }
 
-    public function customQueryAccessTokenFailure(): iterable
+    public static function customQueryAccessTokenFailure(): iterable
     {
         yield ['/foo?protection_token=INVALID_ACCESS_TOKEN'];
+    }
+
+    public function testSelfContainedTokens()
+    {
+        $client = $this->createClient(['test_case' => 'AccessToken', 'root_config' => 'config_self_contained_token.yml']);
+        $client->catchExceptions(false);
+        $client->request('GET', '/foo', [], [], ['HTTP_AUTHORIZATION' => 'Bearer SELF_CONTAINED_ACCESS_TOKEN']);
+        $response = $client->getResponse();
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(['message' => 'Welcome @dunglas!'], json_decode($response->getContent(), true));
     }
 }

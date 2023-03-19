@@ -306,7 +306,7 @@ class SecurityExtensionTest extends TestCase
         $container->compile();
     }
 
-    public function provideAdditionalRequestMatcherConstraints()
+    public static function provideAdditionalRequestMatcherConstraints()
     {
         yield 'Invalid configuration with path' => [['path' => '^/url']];
         yield 'Invalid configuration with host' => [['host' => 'example.com']];
@@ -606,7 +606,7 @@ class SecurityExtensionTest extends TestCase
         ];
     }
 
-    public function acceptableIpsProvider(): iterable
+    public static function acceptableIpsProvider(): iterable
     {
         yield [['127.0.0.1']];
         yield ['127.0.0.1'];
@@ -711,7 +711,7 @@ class SecurityExtensionTest extends TestCase
         $container->compile();
     }
 
-    public function provideEntryPointRequiredData()
+    public static function provideEntryPointRequiredData()
     {
         // more than one entry point available and not explicitly set
         yield [
@@ -742,7 +742,7 @@ class SecurityExtensionTest extends TestCase
         $this->assertEquals($expectedAuthenticators, array_map('strval', $container->getDefinition('security.authenticator.manager.main')->getArgument(0)));
     }
 
-    public function provideConfigureCustomAuthenticatorData()
+    public static function provideConfigureCustomAuthenticatorData()
     {
         yield [
             ['custom_authenticator' => TestAuthenticator::class],
@@ -819,7 +819,7 @@ class SecurityExtensionTest extends TestCase
         $this->assertEquals($expectedUserCheckerClass, $container->findDefinition($userCheckerId)->getClass());
     }
 
-    public function provideUserCheckerConfig()
+    public static function provideUserCheckerConfig()
     {
         yield [[], InMemoryUserChecker::class];
         yield [['user_checker' => TestUserChecker::class], TestUserChecker::class];
@@ -846,6 +846,64 @@ class SecurityExtensionTest extends TestCase
         $listenersIteratorArgument = $container->getDefinition('security.firewall.map.context.main')->getArgument(0);
         $firewallListeners = array_map('strval', $listenersIteratorArgument->getValues());
         $this->assertContains('custom_firewall_listener_id', $firewallListeners);
+    }
+
+    public function testClearSiteDataLogoutListenerEnabled()
+    {
+        $container = $this->getRawContainer();
+
+        $firewallId = 'logout_firewall';
+        $container->loadFromExtension('security', [
+            'firewalls' => [
+                $firewallId => [
+                    'logout' => [
+                        'clear_site_data' => ['*'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $container->compile();
+
+        $this->assertTrue($container->has('security.logout.listener.clear_site_data.'.$firewallId));
+        $listenerArgument = $container->getDefinition('security.logout.listener.clear_site_data.'.$firewallId)->getArgument(0);
+        $this->assertSame(['*'], $listenerArgument);
+    }
+
+    public function testClearSiteDataLogoutListenerDisabled()
+    {
+        $container = $this->getRawContainer();
+
+        $firewallId = 'logout_firewall';
+        $container->loadFromExtension('security', [
+            'firewalls' => [
+                $firewallId => [
+                    'logout' => [
+                        'clear_site_data' => [],
+                    ],
+                ],
+            ],
+        ]);
+
+        $container->compile();
+
+        $this->assertFalse($container->has('security.logout.listener.clear_site_data.'.$firewallId));
+    }
+
+    /**
+     * @group legacy
+     */
+    public function testNothingDoneWithEmptyConfiguration()
+    {
+        $container = $this->getRawContainer();
+
+        $container->loadFromExtension('security');
+
+        $this->expectDeprecation('Since symfony/security-bundle 6.3: Enabling bundle "Symfony\Bundle\SecurityBundle\SecurityBundle" and not configuring it is deprecated.');
+
+        $container->compile();
+
+        $this->assertFalse($container->has('security.authorization_checker'));
     }
 
     protected function getRawContainer()
@@ -907,11 +965,11 @@ class TestAuthenticator implements AuthenticatorInterface
 
 class TestUserChecker implements UserCheckerInterface
 {
-    public function checkPreAuth(UserInterface $user)
+    public function checkPreAuth(UserInterface $user): void
     {
     }
 
-    public function checkPostAuth(UserInterface $user)
+    public function checkPostAuth(UserInterface $user): void
     {
     }
 }
@@ -940,7 +998,7 @@ class TestFirewallListenerFactory implements AuthenticatorFactoryInterface, Fire
         return 'custom_listener';
     }
 
-    public function addConfiguration(NodeDefinition $builder)
+    public function addConfiguration(NodeDefinition $builder): void
     {
     }
 }

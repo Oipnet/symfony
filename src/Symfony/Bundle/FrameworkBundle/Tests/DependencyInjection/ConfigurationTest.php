@@ -26,6 +26,7 @@ use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Notifier\Notifier;
 use Symfony\Component\RateLimiter\Policy\TokenBucketLimiter;
+use Symfony\Component\Scheduler\Messenger\SchedulerTransportFactory;
 use Symfony\Component\Uid\Factory\UuidFactory;
 
 class ConfigurationTest extends TestCase
@@ -61,7 +62,7 @@ class ConfigurationTest extends TestCase
         );
     }
 
-    public function getTestInvalidSessionName()
+    public static function getTestInvalidSessionName()
     {
         return [
             ['a.b'],
@@ -115,7 +116,7 @@ class ConfigurationTest extends TestCase
         $this->assertArrayHasKey($packageName, $config['assets']['packages']);
     }
 
-    public function provideValidAssetsPackageNameConfigurationTests()
+    public static function provideValidAssetsPackageNameConfigurationTests()
     {
         return [
             ['foobar'],
@@ -142,18 +143,16 @@ class ConfigurationTest extends TestCase
             ]);
     }
 
-    public function provideInvalidAssetConfigurationTests()
+    public static function provideInvalidAssetConfigurationTests()
     {
         // helper to turn config into embedded package config
-        $createPackageConfig = function (array $packageConfig) {
-            return [
-                'base_urls' => '//example.com',
-                'version' => 1,
-                'packages' => [
-                    'foo' => $packageConfig,
-                ],
-            ];
-        };
+        $createPackageConfig = fn (array $packageConfig) => [
+            'base_urls' => '//example.com',
+            'version' => 1,
+            'packages' => [
+                'foo' => $packageConfig,
+            ],
+        ];
 
         $config = [
             'version' => 1,
@@ -196,7 +195,7 @@ class ConfigurationTest extends TestCase
         $this->assertEquals($processedConfig, $config['lock']);
     }
 
-    public function provideValidLockConfigurationTests()
+    public static function provideValidLockConfigurationTests()
     {
         yield [null, ['enabled' => true, 'resources' => ['default' => [class_exists(SemaphoreStore::class) && SemaphoreStore::isSupported() ? 'semaphore' : 'flock']]]];
 
@@ -290,7 +289,7 @@ class ConfigurationTest extends TestCase
         $this->assertEquals($processedConfig, $config['semaphore']);
     }
 
-    public function provideValidSemaphoreConfigurationTests()
+    public static function provideValidSemaphoreConfigurationTests()
     {
         yield [null, ['enabled' => true, 'resources' => []]];
 
@@ -655,6 +654,7 @@ class ConfigurationTest extends TestCase
             ],
             'notifier' => [
                 'enabled' => !class_exists(FullStack::class) && class_exists(Notifier::class),
+                'message_bus' => null,
                 'chatter_transports' => [],
                 'texter_transports' => [],
                 'channel_policy' => [],
@@ -672,6 +672,7 @@ class ConfigurationTest extends TestCase
                 'enabled' => false,
                 'debug' => '%kernel.debug%',
                 'private_headers' => [],
+                'skip_response_headers' => [],
             ],
             'rate_limiter' => [
                 'enabled' => !class_exists(FullStack::class) && class_exists(TokenBucketLimiter::class),
@@ -687,7 +688,18 @@ class ConfigurationTest extends TestCase
                 'enabled' => !class_exists(FullStack::class) && class_exists(HtmlSanitizer::class),
                 'sanitizers' => [],
             ],
+            'scheduler' => [
+                'enabled' => !class_exists(FullStack::class) && class_exists(SchedulerTransportFactory::class),
+            ],
             'exceptions' => [],
+            'webhook' => [
+                'enabled' => false,
+                'routing' => [],
+                'message_bus' => 'messenger.default_bus',
+            ],
+            'remote-event' => [
+                'enabled' => false,
+            ],
         ];
     }
 }

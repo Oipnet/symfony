@@ -18,7 +18,7 @@ use Symfony\Component\Form\Exception\TransformationFailedException;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
 
-class ChoiceTypeTest extends BaseTypeTest
+class ChoiceTypeTest extends BaseTypeTestCase
 {
     public const TESTED_TYPE = 'Symfony\Component\Form\Extension\Core\Type\ChoiceType';
 
@@ -531,9 +531,7 @@ class ChoiceTypeTest extends BaseTypeTest
             'choices' => [
                 'Empty' => 'EMPTY_CHOICE',
             ],
-            'choice_value' => function () {
-                return '';
-            },
+            'choice_value' => fn () => '',
         ]);
 
         $form->submit('');
@@ -1702,7 +1700,7 @@ class ChoiceTypeTest extends BaseTypeTest
         $this->assertTrue($view->vars['placeholder_in_choices']);
     }
 
-    public function getOptionsWithPlaceholder()
+    public static function getOptionsWithPlaceholder()
     {
         return [
             // single non-expanded
@@ -1958,7 +1956,7 @@ class ChoiceTypeTest extends BaseTypeTest
         }
     }
 
-    public function invalidNestedValueTestMatrix()
+    public static function invalidNestedValueTestMatrix()
     {
         return [
             'non-multiple, non-expanded' => [false, false, [[]]],
@@ -2153,7 +2151,7 @@ class ChoiceTypeTest extends BaseTypeTest
         $this->assertSame($multiple ? (array) $valueWhitWhiteSpace : $valueWhitWhiteSpace, $form->getData());
     }
 
-    public function provideTrimCases()
+    public static function provideTrimCases()
     {
         return [
             'Simple' => [false, false],
@@ -2188,7 +2186,7 @@ class ChoiceTypeTest extends BaseTypeTest
         $this->assertSame($expected, $form->isEmpty());
     }
 
-    public function expandedIsEmptyWhenNoRealChoiceIsSelectedProvider()
+    public static function expandedIsEmptyWhenNoRealChoiceIsSelectedProvider()
     {
         // Some invalid cases are voluntarily not tested:
         //   - multiple with placeholder
@@ -2208,9 +2206,7 @@ class ChoiceTypeTest extends BaseTypeTest
     {
         $form = $this->factory->create(static::TESTED_TYPE, null, [
             'choices' => $this->choices,
-            'choice_filter' => function ($choice) {
-                return \in_array($choice, range('a', 'c'), true);
-            },
+            'choice_filter' => fn ($choice) => \in_array($choice, range('a', 'c'), true),
         ]);
 
         $this->assertEquals([
@@ -2224,9 +2220,7 @@ class ChoiceTypeTest extends BaseTypeTest
     {
         $form = $this->factory->create(static::TESTED_TYPE, null, [
             'choices' => $this->groupedChoices,
-            'choice_filter' => function ($choice) {
-                return \in_array($choice, range('a', 'c'), true);
-            },
+            'choice_filter' => fn ($choice) => \in_array($choice, range('a', 'c'), true),
         ]);
 
         $this->assertEquals(['Symfony' => new ChoiceGroupView('Symfony', [
@@ -2239,12 +2233,8 @@ class ChoiceTypeTest extends BaseTypeTest
     public function testFilteredChoiceLoader()
     {
         $form = $this->factory->create(static::TESTED_TYPE, null, [
-            'choice_loader' => new CallbackChoiceLoader(function () {
-                return $this->choices;
-            }),
-            'choice_filter' => function ($choice) {
-                return \in_array($choice, range('a', 'c'), true);
-            },
+            'choice_loader' => new CallbackChoiceLoader(fn () => $this->choices),
+            'choice_filter' => fn ($choice) => \in_array($choice, range('a', 'c'), true),
         ]);
 
         $this->assertEquals([
@@ -2256,9 +2246,7 @@ class ChoiceTypeTest extends BaseTypeTest
 
     public function testWithSameLoaderAndDifferentChoiceValueCallbacks()
     {
-        $choiceLoader = new CallbackChoiceLoader(function () {
-            return [1, 2, 3];
-        });
+        $choiceLoader = new CallbackChoiceLoader(fn () => [1, 2, 3]);
 
         $view = $this->factory->create(FormTypeTest::TESTED_TYPE)
             ->add('choice_one', self::TESTED_TYPE, [
@@ -2266,9 +2254,7 @@ class ChoiceTypeTest extends BaseTypeTest
             ])
             ->add('choice_two', self::TESTED_TYPE, [
                 'choice_loader' => $choiceLoader,
-                'choice_value' => function ($choice) {
-                    return $choice ? (string) $choice * 10 : '';
-                },
+                'choice_value' => fn ($choice) => $choice ? (string) $choice * 10 : '',
             ])
             ->createView()
         ;

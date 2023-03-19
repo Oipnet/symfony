@@ -16,34 +16,34 @@ use Symfony\Component\Notifier\Bridge\Telegram\TelegramOptions;
 use Symfony\Component\Notifier\Bridge\Telegram\TelegramTransport;
 use Symfony\Component\Notifier\Exception\TransportException;
 use Symfony\Component\Notifier\Message\ChatMessage;
-use Symfony\Component\Notifier\Message\MessageInterface;
 use Symfony\Component\Notifier\Message\SmsMessage;
 use Symfony\Component\Notifier\Test\TransportTestCase;
+use Symfony\Component\Notifier\Tests\Transport\DummyMessage;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 final class TelegramTransportTest extends TransportTestCase
 {
-    public function createTransport(HttpClientInterface $client = null, string $channel = null): TelegramTransport
+    public static function createTransport(HttpClientInterface $client = null, string $channel = null): TelegramTransport
     {
-        return new TelegramTransport('token', $channel, $client ?? $this->createMock(HttpClientInterface::class));
+        return new TelegramTransport('token', $channel, $client ?? new MockHttpClient());
     }
 
-    public function toStringProvider(): iterable
+    public static function toStringProvider(): iterable
     {
-        yield ['telegram://api.telegram.org', $this->createTransport()];
-        yield ['telegram://api.telegram.org?channel=testChannel', $this->createTransport(null, 'testChannel')];
+        yield ['telegram://api.telegram.org', self::createTransport()];
+        yield ['telegram://api.telegram.org?channel=testChannel', self::createTransport(null, 'testChannel')];
     }
 
-    public function supportedMessagesProvider(): iterable
+    public static function supportedMessagesProvider(): iterable
     {
         yield [new ChatMessage('Hello!')];
     }
 
-    public function unsupportedMessagesProvider(): iterable
+    public static function unsupportedMessagesProvider(): iterable
     {
         yield [new SmsMessage('0611223344', 'Hello!')];
-        yield [$this->createMock(MessageInterface::class)];
+        yield [new DummyMessage()];
     }
 
     public function testSendWithErrorResponseThrowsTransportException()
@@ -59,11 +59,9 @@ final class TelegramTransportTest extends TransportTestCase
             ->method('getContent')
             ->willReturn(json_encode(['description' => 'testDescription', 'error_code' => 400]));
 
-        $client = new MockHttpClient(static function () use ($response): ResponseInterface {
-            return $response;
-        });
+        $client = new MockHttpClient(static fn (): ResponseInterface => $response);
 
-        $transport = $this->createTransport($client, 'testChannel');
+        $transport = self::createTransport($client, 'testChannel');
 
         $transport->send(new ChatMessage('testMessage'));
     }
@@ -81,9 +79,7 @@ final class TelegramTransportTest extends TransportTestCase
             ->method('getContent')
             ->willReturn(json_encode(['description' => 'testDescription', 'error_code' => 404]));
 
-        $client = new MockHttpClient(static function () use ($response): ResponseInterface {
-            return $response;
-        });
+        $client = new MockHttpClient(static fn (): ResponseInterface => $response);
 
         $transport = $this->createTransport($client, 'testChannel');
 
@@ -138,7 +134,7 @@ JSON;
             return $response;
         });
 
-        $transport = $this->createTransport($client, 'testChannel');
+        $transport = self::createTransport($client, 'testChannel');
 
         $sentMessage = $transport->send(new ChatMessage('testMessage'));
 
@@ -193,6 +189,37 @@ JSON;
         $transport->send(new ChatMessage('testMessage', $options));
     }
 
+    public function testSendWithOptionToAnswerCallbackQuery()
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->expects($this->exactly(2))
+            ->method('getStatusCode')
+            ->willReturn(200);
+
+        $content = <<<JSON
+            {
+                "ok": true,
+                "result": true
+            }
+JSON;
+
+        $response->expects($this->once())
+            ->method('getContent')
+            ->willReturn($content)
+        ;
+
+        $client = new MockHttpClient(function (string $method, string $url) use ($response): ResponseInterface {
+            $this->assertStringEndsWith('/answerCallbackQuery', $url);
+
+            return $response;
+        });
+
+        $transport = $this->createTransport($client, 'testChannel');
+        $options = (new TelegramOptions())->answerCallbackQuery('123', true, 1);
+
+        $transport->send(new ChatMessage('testMessage', $options));
+    }
+
     public function testSendWithChannelOverride()
     {
         $channelOverride = 'channelOverride';
@@ -241,7 +268,7 @@ JSON;
             return $response;
         });
 
-        $transport = $this->createTransport($client, 'defaultChannel');
+        $transport = self::createTransport($client, 'defaultChannel');
 
         $messageOptions = new TelegramOptions();
         $messageOptions->chatId($channelOverride);
@@ -299,7 +326,7 @@ JSON;
             return $response;
         });
 
-        $transport = $this->createTransport($client, 'testChannel');
+        $transport = self::createTransport($client, 'testChannel');
 
         $transport->send(new ChatMessage('I contain special characters _ * [ ] ( ) ~ ` > # + - = | { } . ! to send.'));
     }

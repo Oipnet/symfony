@@ -23,6 +23,9 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class NumberType extends AbstractType
 {
+    /**
+     * @return void
+     */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder->addViewTransformer(new NumberToLocalizedStringTransformer(
@@ -37,15 +40,25 @@ class NumberType extends AbstractType
         }
     }
 
+    /**
+     * @return void
+     */
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
         if ($options['html5']) {
             $view->vars['type'] = 'number';
+
+            if (!isset($view->vars['attr']['step'])) {
+                $view->vars['attr']['step'] = 'any';
+            }
         } else {
             $view->vars['attr']['inputmode'] = 0 === $options['scale'] ? 'numeric' : 'decimal';
         }
     }
 
+    /**
+     * @return void
+     */
     public function configureOptions(OptionsResolver $resolver)
     {
         $resolver->setDefaults([

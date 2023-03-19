@@ -19,6 +19,7 @@ use Symfony\Component\VarExporter\Tests\Fixtures\LazyGhost\ChildStdClass;
 use Symfony\Component\VarExporter\Tests\Fixtures\LazyGhost\ChildTestClass;
 use Symfony\Component\VarExporter\Tests\Fixtures\LazyGhost\LazyClass;
 use Symfony\Component\VarExporter\Tests\Fixtures\LazyGhost\MagicClass;
+use Symfony\Component\VarExporter\Tests\Fixtures\LazyGhost\ReadOnlyClass;
 use Symfony\Component\VarExporter\Tests\Fixtures\LazyGhost\TestClass;
 
 class LazyGhostTraitTest extends TestCase
@@ -148,7 +149,7 @@ class LazyGhostTraitTest extends TestCase
         $this->assertSame(123, $clone->bar);
     }
 
-    public function provideMagicClass()
+    public static function provideMagicClass()
     {
         yield [new MagicClass()];
 
@@ -244,9 +245,7 @@ class LazyGhostTraitTest extends TestCase
 
     public function testPartialInitializationWithReset()
     {
-        $initializer = static function (ChildTestClass $instance, string $property, ?string $scope, mixed $default) {
-            return 234;
-        };
+        $initializer = static fn (ChildTestClass $instance, string $property, ?string $scope, mixed $default) => 234;
         $instance = ChildTestClass::createLazyGhost([
             'public' => $initializer,
             'publicReadonly' => $initializer,
@@ -278,9 +277,7 @@ class LazyGhostTraitTest extends TestCase
 
     public function testPartialInitializationWithNastyPassByRef()
     {
-        $instance = ChildTestClass::createLazyGhost(['public' => function (ChildTestClass $instance, string &$property, ?string &$scope, mixed $default) {
-            return $property = $scope = 123;
-        }]);
+        $instance = ChildTestClass::createLazyGhost(['public' => fn (ChildTestClass $instance, string &$property, ?string &$scope, mixed $default) => $property = $scope = 123]);
 
         $this->assertSame(123, $instance->public);
     }
@@ -313,9 +310,7 @@ class LazyGhostTraitTest extends TestCase
     public function testFullPartialInitialization()
     {
         $counter = 0;
-        $initializer = static function (ChildTestClass $instance, string $property, ?string $scope, mixed $default) use (&$counter) {
-            return 234;
-        };
+        $initializer = static fn (ChildTestClass $instance, string $property, ?string $scope, mixed $default) => 234;
         $instance = ChildTestClass::createLazyGhost([
             'public' => $initializer,
             'publicReadonly' => $initializer,
@@ -405,6 +400,16 @@ class LazyGhostTraitTest extends TestCase
         $proxy->foo[] = 123;
 
         $this->assertSame([123], $proxy->foo);
+    }
+
+    /**
+     * @requires PHP 8.3
+     */
+    public function testReadOnlyClass()
+    {
+        $proxy = $this->createLazyGhost(ReadOnlyClass::class, fn ($proxy) => $proxy->__construct(123));
+
+        $this->assertSame(123, $proxy->foo);
     }
 
     /**

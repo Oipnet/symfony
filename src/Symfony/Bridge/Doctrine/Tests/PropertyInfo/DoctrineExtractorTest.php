@@ -16,7 +16,6 @@ use Doctrine\DBAL\Types\Type as DBALType;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\ORMSetup;
-use Doctrine\ORM\Tools\Setup;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\Doctrine\PropertyInfo\DoctrineExtractor;
 use Symfony\Bridge\Doctrine\Tests\PropertyInfo\Fixtures\DoctrineDummy;
@@ -34,9 +33,7 @@ class DoctrineExtractorTest extends TestCase
 {
     private function createExtractor()
     {
-        $config = class_exists(ORMSetup::class)
-            ? ORMSetup::createAnnotationMetadataConfiguration([__DIR__.\DIRECTORY_SEPARATOR.'Fixtures'], true)
-            : Setup::createAnnotationMetadataConfiguration([__DIR__.\DIRECTORY_SEPARATOR.'Fixtures'], true);
+        $config = ORMSetup::createAnnotationMetadataConfiguration([__DIR__.\DIRECTORY_SEPARATOR.'Fixtures'], true);
         $entityManager = EntityManager::create(['driver' => 'pdo_sqlite'], $config);
 
         if (!DBALType::hasType('foo')) {
@@ -135,7 +132,7 @@ class DoctrineExtractorTest extends TestCase
         $this->assertNull($this->createExtractor()->getTypes(DoctrineEnum::class, 'enumCustom', []));
     }
 
-    public function typesProvider()
+    public static function typesProvider()
     {
         $provider = [
             ['id', [new Type(Type::BUILTIN_TYPE_INT)]],

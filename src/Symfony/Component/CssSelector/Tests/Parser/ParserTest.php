@@ -25,9 +25,7 @@ class ParserTest extends TestCase
     {
         $parser = new Parser();
 
-        $this->assertEquals($representation, array_map(function (SelectorNode $node) {
-            return (string) $node->getTree();
-        }, $parser->parse($source)));
+        $this->assertEquals($representation, array_map(fn (SelectorNode $node) => (string) $node->getTree(), $parser->parse($source)));
     }
 
     /** @dataProvider getParserExceptionTestData */
@@ -93,7 +91,7 @@ class ParserTest extends TestCase
         Parser::parseSeries($function->getArguments());
     }
 
-    public function getParserTestData()
+    public static function getParserTestData()
     {
         return [
             ['*', ['Element[*]']],
@@ -151,7 +149,7 @@ class ParserTest extends TestCase
         ];
     }
 
-    public function getParserExceptionTestData()
+    public static function getParserExceptionTestData()
     {
         return [
             ['attributes(href)/html/body/a', SyntaxErrorException::unexpectedToken('selector', new Token(Token::TYPE_DELIMITER, '(', 10))->getMessage()],
@@ -181,7 +179,7 @@ class ParserTest extends TestCase
         ];
     }
 
-    public function getPseudoElementsTestData()
+    public static function getPseudoElementsTestData()
     {
         return [
             ['foo', 'Element[foo]', ''],
@@ -203,7 +201,7 @@ class ParserTest extends TestCase
         ];
     }
 
-    public function getSpecificityTestData()
+    public static function getSpecificityTestData()
     {
         return [
             ['*', 0],
@@ -231,7 +229,7 @@ class ParserTest extends TestCase
         ];
     }
 
-    public function getParseSeriesTestData()
+    public static function getParseSeriesTestData()
     {
         return [
             ['1n+3', 1, 3],
@@ -253,7 +251,7 @@ class ParserTest extends TestCase
         ];
     }
 
-    public function getParseSeriesExceptionTestData()
+    public static function getParseSeriesExceptionTestData()
     {
         return [
             ['foo'],

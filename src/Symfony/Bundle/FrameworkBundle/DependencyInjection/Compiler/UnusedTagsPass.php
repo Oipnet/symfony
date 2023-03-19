@@ -74,11 +74,13 @@ class UnusedTagsPass implements CompilerPassInterface
         'property_info.list_extractor',
         'property_info.type_extractor',
         'proxy',
+        'remote_event.consumer',
         'routing.condition_service',
         'routing.expression_language_function',
         'routing.expression_language_provider',
         'routing.loader',
         'routing.route_loader',
+        'scheduler.schedule_provider',
         'security.authenticator.login_linker',
         'security.expression_language_provider',
         'security.remember_me_aware',
@@ -101,6 +103,9 @@ class UnusedTagsPass implements CompilerPassInterface
         'workflow',
     ];
 
+    /**
+     * @return void
+     */
     public function process(ContainerBuilder $container)
     {
         $tags = array_unique(array_merge($container->findTags(), self::KNOWN_TAGS));

@@ -1,13 +1,17 @@
 CHANGELOG
 =========
 
+6.3
+---
+
+ * Add `UriTemplateHttpClient` to use URI templates as specified in the RFC 6570
+
 6.2
 ---
 
  * Make `HttplugClient` implement `Psr\Http\Message\RequestFactoryInterface`, `StreamFactoryInterface` and `UriFactoryInterface`
  * Deprecate implementing `Http\Message\RequestFactory`, `StreamFactory` and `UriFactory` on `HttplugClient`
  * Add `withOptions()` to `HttplugClient` and `Psr18Client`
- * Add support for "friendsofphp/well-known-implementations"
 
 6.1
 ---
