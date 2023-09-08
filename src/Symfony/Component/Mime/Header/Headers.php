@@ -147,6 +147,8 @@ final class Headers
             $method = 'addTextHeader';
         } elseif ('addIdentificationHeader' === $method) {
             $method = 'addIdHeader';
+        } elseif ($method === 'addMailboxListHeader' && !\is_array($argument)) {
+            $argument = [$argument];
         }
 
         return $this->$method($name, $argument, $more);
